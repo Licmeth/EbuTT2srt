@@ -16,12 +16,14 @@ BEGIN = "begin"
 END = "end"
 MESSAGE = "message"
 
-OUTPUT_FILENAME = "subtitles"
-OUTPUT_FILENAME_EXTENSION = "srt"
+OUTPUT_EXTENSION = "srt"
 
 def main():
     filename = getInputFilename()
     print(f"Converting {filename}")
+
+    print(getOutputFilename(filename))
+    quit()
 
     subs = parseInputFile(filename)
     print(f"Found {len(subs)} subtitles.")
@@ -50,11 +52,11 @@ def getInputFilename():
 
 
 def getOutputFilename(inputFilename: str):
-    basename = os.path.join(os.path.dirname(inputFilename),OUTPUT_FILENAME)
-    filename = f"{basename}.{OUTPUT_FILENAME_EXTENSION}"
+    basename, _ = os.path.splitext(inputFilename)
+    filename = f"{basename}.{OUTPUT_EXTENSION}"
     if os.path.exists(filename):
         for i in range(1,1000):
-            filename = f"{basename}{i:03}.{OUTPUT_FILENAME_EXTENSION}"
+            filename = f"{basename}{i:03}.{OUTPUT_EXTENSION}"
             if not os.path.exists(filename):
                 return filename
         print("Error. Could not create output file.")
