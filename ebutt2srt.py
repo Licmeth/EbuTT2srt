@@ -22,9 +22,6 @@ def main():
     filename = getInputFilename()
     print(f"Converting {filename}")
 
-    print(getOutputFilename(filename))
-    quit()
-
     subs = parseInputFile(filename)
     print(f"Found {len(subs)} subtitles.")
 
