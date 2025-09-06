@@ -1,5 +1,6 @@
 import sys
 import os
+import argparse
 import datetime as dt
 from lxml import etree as et
 
@@ -18,76 +19,68 @@ MESSAGE = "message"
 
 OUTPUT_EXTENSION = "srt"
 
-def main():
-    filename = getInputFilename()
-    print(f"Converting {filename}")
+def convert_ebutt_to_srt(input_file: str):
+    filepath = check_input_filepath(input_file)
+    print(f"Converting {filepath}")
 
-    subs = parseInputFile(filename)
+    subs = parse_ebu_file(filepath)
     print(f"Found {len(subs)} subtitles.")
 
-    outputFilename = getOutputFilename(filename)
-    writeOutput(subs, outputFilename)
-    print(f"Subtitles successfully written to {outputFilename}")
+    output_filepath = get_output_filepath(filepath)
+    write_output(subs, output_filepath)
+    print(f"Subtitles successfully written to {output_filepath}")
 
-    
 
-def getInputFilename():
-    if len(sys.argv) < 1:
+def check_input_filepath(input_file: str) -> str:
+    if len(input_file) < 1:
         print("Error. Please provide an EBU-TT encoded xml file as argument.")
-        quit()
-    filename = sys.argv[1]
+        sys.exit(1)
 
-    if not os.path.exists(filename):
+    if not os.path.exists(input_file):
         print("Error. The given input file does not exist.")
-        quit()
-
-    if not os.path.isabs(filename):
-        filename = os.path.abspath(filename)
+        sys.exit(1)
     
-    return filename
+    return os.path.abspath(input_file)
 
 
-
-def getOutputFilename(inputFilename: str):
-    basename, _ = os.path.splitext(inputFilename)
-    filename = f"{basename}.{OUTPUT_EXTENSION}"
-    if os.path.exists(filename):
+def get_output_filepath(input_filepath: str) -> str:
+    basepath, _ = os.path.splitext(input_filepath)
+    filepath = f"{basepath}.{OUTPUT_EXTENSION}"
+    if os.path.exists(filepath):
         for i in range(1,1000):
-            filename = f"{basename}{i:03}.{OUTPUT_EXTENSION}"
-            if not os.path.exists(filename):
-                return filename
+            filepath = f"{basepath}{i:03}.{OUTPUT_EXTENSION}"
+            if not os.path.exists(filepath):
+                return filepath
         print("Error. Could not create output file.")
-        quit()
-    return filename
+        sys.exit(1)
+    return filepath
 
 
-
-def parseInputFile(filename: str):
+def parse_ebu_file(filepath: str):
     try:
-        root = et.parse(filename)
+        root = et.parse(filepath)
     except Exception as e:
         print("Error parsing file")
         print(e)
-        quit()
+        sys.exit(1)
 
     subs = list()
     try:
         for node in root.find(TAG_BODY).find(TAG_DIV):
             sub = dict()
-            sub[BEGIN] = getTimestamp(node, ATTR_BEGIN)
-            sub[END] = getTimestamp(node, ATTR_END)
-            sub[MESSAGE] = getMessage(node)
+            sub[BEGIN] = get_timestamp(node, ATTR_BEGIN)
+            sub[END] = get_timestamp(node, ATTR_END)
+            sub[MESSAGE] = get_message(node)
             if not None in (sub[BEGIN], sub[END], sub[MESSAGE]):
                 subs.append(sub)
     except Exception as e:
         print("Error parsing xml content")
         print(e)
-        quit()
+        sys.exit(1)
     return subs
 
 
-
-def getTimestamp(node: et.Element, attribute: str):
+def get_timestamp(node: et.Element, attribute: str) -> dt.datetime:
     try:
         value = node.get(attribute)
         value = f"{value}000"
@@ -97,8 +90,7 @@ def getTimestamp(node: et.Element, attribute: str):
     return timestamp
     
 
-
-def getMessage(node: et.Element):
+def get_message(node: et.Element) -> str:
     text = None
     for span in node.findall(TAG_SPAN):
         line = span.text
@@ -111,24 +103,24 @@ def getMessage(node: et.Element):
     return text
 
 
-
-def writeOutput(subs: dict, filename: str):
-    with open(filename, 'w', encoding='utf8') as f:
+def write_output(subs: dict, filepath: str):
+    with open(filepath, 'w', encoding='utf8') as f:
         for i, sub in enumerate(subs):
             f.write(f"{i+1:d}\n")
-            f.write(f"{formatOutputTimestamp(sub[BEGIN])} --> {formatOutputTimestamp(sub[END])}\n")
+            f.write(f"{format_output_timestamp(sub[BEGIN])} --> {format_output_timestamp(sub[END])}\n")
             f.writelines(sub[MESSAGE])
             f.write("\n\n")
 
 
-
-def formatOutputTimestamp(timestamp: dt.datetime):
+def format_output_timestamp(timestamp: dt.datetime) -> str:
     return f"{timestamp.strftime('%H:%M:%S')},{timestamp.microsecond/1000:03.0f}"
 
 
-
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Convert subtitles in EBU-TT xml format to srt.")
+    parser.add_argument("inputfile", help="Input xml file.")
+    args = parser.parse_args()
+    convert_ebutt_to_srt(args.inputfile)
 
 
 
